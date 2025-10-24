@@ -1,0 +1,9 @@
+package com.cibercare.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.cibercare.model.Paciente;
+
+public interface IPacienteRepository extends JpaRepository<Paciente, Long>{
+
+}

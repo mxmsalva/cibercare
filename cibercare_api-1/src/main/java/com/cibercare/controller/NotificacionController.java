@@ -1,0 +1,42 @@
+package com.cibercare.controller;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import com.cibercare.model.Notificacion;
+import com.cibercare.repository.INotificacionRepository;
+
+@Controller
+@RequestMapping("/api/notificaciones")
+public class NotificacionController {
+
+	@Autowired
+    private INotificacionRepository notificacionRepository;
+
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/doctor/{doctorId}")
+    public List<Notificacion> listarNotificaciones(@PathVariable Long doctorId) {
+        return notificacionRepository.findByDoctorIdAndLeidaFalse(doctorId);
+    }
+
+    @PreAuthorize("hasRole('DOCTOR')")
+    @PutMapping("/{id}/leida")
+    public Notificacion marcarComoLeida(@PathVariable Long id) {
+        Notificacion notif = notificacionRepository.findById(id).orElseThrow();
+        notif.setLeida(true);
+        return notificacionRepository.save(notif);
+    }
+}

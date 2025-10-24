@@ -1,0 +1,82 @@
+package com.cibercare.controller;
+
+import com.cibercare.model.Cita;
+import com.cibercare.model.EstadoCita;
+import com.cibercare.repository.ICitaRepository;
+import com.cibercare.repository.IEstadoCitaRepository;
+import com.cibercare.service.NotificacionService;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/citas")
+public class CitaController {
+
+    @Autowired
+    private ICitaRepository citaRepository;
+
+    @Autowired
+    private IEstadoCitaRepository estadoCitaRepository;
+    
+    @Autowired
+    private NotificacionService notificacionService; 
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
+    @GetMapping
+    public List<Cita> listarCitas() {
+        return citaRepository.findAll();
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'PACIENTE')")
+    @PostMapping
+    public Cita crearCita(@RequestBody Cita cita) {
+        return citaRepository.save(cita);
+    }
+
+    @PreAuthorize("hasRole('PACIENTE')")
+    @PutMapping("/{id}/cancelar")
+    public ResponseEntity<?> cancelarCita(@PathVariable Long id) {
+        Cita cita = citaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
+
+        EstadoCita cancelado = estadoCitaRepository.findByNombre("CANCELADO")
+                .orElseThrow(() -> new RuntimeException("Estado 'CANCELADO' no encontrado"));
+
+        cita.setEstado(cancelado);
+        citaRepository.save(cita);
+
+        // 🔔 Enviar notificación al doctor
+        notificacionService.enviarNotificacion(
+            cita.getDoctor(),
+            "El paciente " + cita.getPaciente().getUsuario() +
+            " ha cancelado su cita del " + cita.getHorario()
+        );
+
+        return ResponseEntity.ok("Cita cancelada y notificación enviada");
+    }
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    @PutMapping("/Doctor/{id}/revisar")
+    public ResponseEntity<?> marcarCitaComoRevisada(@PathVariable Long id) {
+        Cita cita = citaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
+
+        EstadoCita revisado = estadoCitaRepository.findByNombre("REVISADO")
+                .orElseThrow(() -> new RuntimeException("Estado 'REVISADO' no encontrado"));
+
+        cita.setEstado(revisado);
+        citaRepository.save(cita);
+
+        return ResponseEntity.ok(cita);
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'PACIENTE')")
+    @GetMapping("/paciente/{id}")
+    public List<Cita> listarPorPaciente(@PathVariable Long id) {
+        return citaRepository.findByPacienteId(id);
+    }
+    
+}

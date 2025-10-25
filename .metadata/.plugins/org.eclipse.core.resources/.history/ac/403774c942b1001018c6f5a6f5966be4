@@ -37,9 +37,7 @@ public class JwtUtils {
 
     public String generateToken(UserDetails userDetails, String rol) {
         Map<String, Object> claims = new HashMap<>();
-        String rolConPrefijo = rol.startsWith("ROLE_") ? rol : "ROLE_" + rol;
-        claims.put("authorities", List.of(rolConPrefijo));
-
+        claims.put("authorities", List.of(rol));
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(userDetails.getUsername())
@@ -48,7 +46,6 @@ public class JwtUtils {
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
-
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);

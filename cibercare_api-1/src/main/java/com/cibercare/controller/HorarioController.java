@@ -61,22 +61,42 @@ public class HorarioController {
     // =============================
     // 🔹 DOCTOR: Crear horario propio
     // =============================
-    @PreAuthorize("hasRole('DOCTOR')")
-    @PostMapping("/crear")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
+    @PostMapping
     public ResponseEntity<?> crearHorario(@RequestBody Horario horario, Authentication auth) {
-        String username = auth.getName();
+        try {
+            String username = auth.getName();
+            Horario nuevoHorario;
 
-        Doctor doctor = doctorRepository.findByUsuarioUsername(username)
-                .orElseThrow(() -> new RuntimeException("Doctor no encontrado para el usuario autenticado"));
+            if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_DOCTOR"))) {
+                // 🔹 Si es un doctor, asignar su propio usuario
+                Doctor doctor = doctorRepository.findByUsuarioUsername(username)
+                        .orElseThrow(() -> new RuntimeException("Doctor no encontrado para el usuario autenticado"));
+                horario.setDoctor(doctor);
+            } else if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+                // 🔹 Si es admin, debe venir un doctor.id en el body
+                if (horario.getDoctor() == null || horario.getDoctor().getId() == null) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Debe especificar el ID del doctor"));
+                }
 
-        horario.setDoctor(doctor);
-        Horario nuevoHorario = horarioRepository.save(horario);
+                Doctor doctor = doctorRepository.findById(horario.getDoctor().getId())
+                        .orElseThrow(() -> new RuntimeException("Doctor no encontrado con ID: " + horario.getDoctor().getId()));
+                horario.setDoctor(doctor);
+            }
 
-        return ResponseEntity.ok(Map.of(
-                "mensaje", "Horario creado correctamente",
-                "horario", nuevoHorario
-        ));
+            nuevoHorario = horarioRepository.save(horario);
+
+            return ResponseEntity.ok(Map.of(
+                    "mensaje", "Horario creado correctamente",
+                    "horario", nuevoHorario
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al crear horario: " + e.getMessage()));
+        }
     }
+
 
     // =============================
     // 🔹 ADMIN o DOCTOR: Cambiar disponibilidad
@@ -100,28 +120,23 @@ public class HorarioController {
     // =============================
     // 🔹 DOCTOR: Eliminar solo su horario
     // =============================
-    @PreAuthorize("hasRole('DOCTOR')")
+  
+    
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> eliminarHorario(@PathVariable Long id, Authentication auth) {
-        String username = auth.getName();
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> eliminarHorario(@PathVariable Long id) {
+        try {
+            if (!horarioRepository.existsById(id)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Horario no encontrado"));
+            }
 
-        Doctor doctor = doctorRepository.findByUsuarioUsername(username)
-                .orElseThrow(() -> new RuntimeException("Doctor no encontrado para el usuario autenticado"));
-
-        Horario horario = horarioRepository.findById(id)
-                .orElse(null);
-
-        if (horario == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "Horario no encontrado"));
+            horarioRepository.deleteById(id);
+            return ResponseEntity.ok(Map.of("mensaje", "Horario eliminado correctamente"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al eliminar el horario"));
         }
-
-        if (!horario.getDoctor().getId().equals(doctor.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "No puedes eliminar horarios de otro doctor"));
-        }
-
-        horarioRepository.delete(horario);
-        return ResponseEntity.ok(Map.of("mensaje", "Horario eliminado correctamente"));
     }
 }

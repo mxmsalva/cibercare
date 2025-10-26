@@ -13,10 +13,13 @@ import com.cibercare.repository.IPacienteRepository;
 import com.cibercare.repository.IUsuarioRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
+
 import org.springframework.security.core.Authentication;
 
 
@@ -84,15 +87,24 @@ public class PacienteController {
 		}).orElse(ResponseEntity.notFound().build());
 	}
 
-	@PreAuthorize("hasRole('ADMIN')")
-	@DeleteMapping("/{id}")
-	public ResponseEntity<?> eliminarPaciente(@PathVariable Long id) {
-		if (!pacienteRepository.existsById(id)) {
-			return ResponseEntity.notFound().build();
-		}
-		pacienteRepository.deleteById(id);
-		return ResponseEntity.ok("Paciente eliminado correctamente");
-	}
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> eliminarPaciente(@PathVariable Long id) {
+        try {
+            if (!pacienteRepository.existsById(id)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Paciente no encontrado"));
+            }
+
+            pacienteRepository.deleteById(id);
+            return ResponseEntity.ok(Map.of("mensaje", "Paciente eliminado correctamente"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al eliminar el paciente"));
+        }
+    }
 
 	@PreAuthorize("hasAnyRole('PACIENTE', 'ADMIN')")
 	@GetMapping("/username/{username}")

@@ -62,38 +62,54 @@ public class AuthController {
 
 	
 	@PostMapping("/register")
-	public ResponseEntity<?> registro(@RequestBody Usuario usuario) {
+	public ResponseEntity<?> registrarUsuario(@RequestBody Map<String, Object> request) {
 	    try {
-	        
-	        usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
-	        Usuario nuevoUsuario = usuarioRepository.save(usuario);
-	        
-	        if (usuario.getRol() != null) {
-	            String rol = usuario.getRol().getNombre().toUpperCase();
+	        Usuario usuario = new Usuario();
+	        usuario.setNombreCompleto((String) request.get("nombreCompleto"));
+	        usuario.setEmail((String) request.get("email"));
+	        usuario.setUsername((String) request.get("username"));
+	        usuario.setPassword(passwordEncoder.encode((String) request.get("password")));
 
-	            switch (rol) {
-	                case "DOCTOR":
-	                    Doctor doctor = new Doctor();
-	                    doctor.setUsuario(nuevoUsuario);
-	                    doctorRepository.save(doctor);
-	                    break;
-	                case "PACIENTE":
-	                    Paciente paciente = new Paciente();
-	                    paciente.setUsuario(nuevoUsuario);
-	                    pacienteRepository.save(paciente);
-	                    break;
-	                default:
-	                    break;
-	            }
+	        // 🔹 Obtener el rol por ID
+	        Object rolObj = request.get("rol");
+	        Rol rol = null;
+	        if (rolObj instanceof Map<?, ?> rolMap && rolMap.containsKey("id")) {
+	            Long rolId = ((Number) rolMap.get("id")).longValue();
+	            rol = rolRepository.findById(rolId).orElse(null);
 	        }
 
-	        return ResponseEntity.ok(Map.of("mensaje", "Usuario registrado correctamente"));
+	        if (rol == null) {
+	            return ResponseEntity.badRequest().body(Map.of("error", "Rol no encontrado"));
+	        }
+
+	        usuario.setRol(rol);
+	        usuarioRepository.save(usuario);
+
+	        // ✅ Crear automáticamente la relación según el rol
+	        if ("DOCTOR".equalsIgnoreCase(rol.getNombre())) {
+	            Doctor doctor = new Doctor();
+	            doctor.setUsuario(usuario); // ← aquí el vínculo correcto
+	            doctorRepository.save(doctor);
+	        }
+
+	        if ("PACIENTE".equalsIgnoreCase(rol.getNombre())) {
+	            Paciente paciente = new Paciente();
+	            paciente.setUsuario(usuario);
+	            pacienteRepository.save(paciente);
+	        }
+
+	        return ResponseEntity.ok(Map.of(
+	                "mensaje", "Usuario registrado correctamente",
+	                "usuario", usuario
+	        ));
+
 	    } catch (Exception e) {
 	        e.printStackTrace();
-	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-	                .body(Map.of("error", "Error al registrar el usuario"));
+	        return ResponseEntity.internalServerError()
+	                .body(Map.of("error", "Error al registrar usuario: " + e.getMessage()));
 	    }
 	}
+
 
 	@PostMapping("/register/pacientes")
 	public ResponseEntity<?> registrarPaciente(@RequestBody Map<String, Object> request) {
@@ -167,11 +183,33 @@ public class AuthController {
 					.body(Map.of("valid", false, "error", "Token inválido o expirado"));
 		}
 	}
+	
+	
 
 	@GetMapping("/usuarios")
 	@PreAuthorize("hasRole('ADMIN')")
 	public ResponseEntity<?> listarUsuarios() {
-		List<Usuario> usuarios = authService.listarUsuarios();
-		return ResponseEntity.ok(usuarios);
+	    List<Usuario> usuarios = authService.listarUsuarios();
+	    return ResponseEntity.ok(usuarios);
 	}
+
+	
+	@DeleteMapping("/usuarios/{id}")
+	@PreAuthorize("hasRole('ADMIN')")
+	public ResponseEntity<?> eliminarUsuario(@PathVariable Long id) {
+	    try {
+	        if (!usuarioRepository.existsById(id)) {
+	            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+	                    .body(Map.of("error", "Usuario no encontrado"));
+	        }
+
+	        usuarioRepository.deleteById(id);
+	        return ResponseEntity.ok(Map.of("mensaje", "Usuario eliminado correctamente"));
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+	                .body(Map.of("error", "Error al eliminar el usuario"));
+	    }
+	}
+
 }

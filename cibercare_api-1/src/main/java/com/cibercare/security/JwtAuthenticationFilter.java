@@ -15,6 +15,8 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.jsonwebtoken.Claims;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -54,9 +56,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     System.out.println("✅ TOKEN VÁLIDO PARA: " + username);
 
                     // Convertimos a SimpleGrantedAuthority correctamente
-                    List<SimpleGrantedAuthority> authorities = userDetails.getAuthorities().stream()
-                            .map(auth -> new SimpleGrantedAuthority(auth.getAuthority()))
-                            .collect(Collectors.toList());
+                 // 🔹 Extraer las autoridades directamente del token
+                    Claims claims = jwtUtils.extractAllClaims(jwt);
+                    List<String> roles = (List<String>) claims.get("authorities");
+
+                    List<SimpleGrantedAuthority> authorities = roles != null
+                            ? roles.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList())
+                            : List.of();
+
 
                     System.out.println("✅ AUTORIDADES: " + authorities);
 

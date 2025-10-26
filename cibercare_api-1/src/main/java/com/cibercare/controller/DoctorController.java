@@ -91,15 +91,23 @@ public class DoctorController {
 		}).orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Doctor no encontrado")));
 	}
 
-	@PreAuthorize("hasRole('ADMIN')")
-	@DeleteMapping("/{id}")
-	public ResponseEntity<?> eliminarDoctor(@PathVariable Long id) {
-		if (!doctorRepository.existsById(id)) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Doctor no encontrado"));
-		}
-		doctorRepository.deleteById(id);
-		return ResponseEntity.ok(Map.of("mensaje", "Doctor eliminado correctamente"));
-	}
+	 @DeleteMapping("/{id}")
+	    @PreAuthorize("hasRole('ADMIN')")
+	    public ResponseEntity<?> eliminarDoctor(@PathVariable Long id) {
+	        try {
+	            if (!doctorRepository.existsById(id)) {
+	                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+	                        .body(Map.of("error", "Doctor no encontrado"));
+	            }
+
+	            doctorRepository.deleteById(id);
+	            return ResponseEntity.ok(Map.of("mensaje", "Doctor eliminado correctamente"));
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+	                    .body(Map.of("error", "Error al eliminar el doctor"));
+	        }
+	    }
 
 	@PreAuthorize("hasAnyAuthority('ROLE_DOCTOR', 'ROLE_ADMIN')")
 	@GetMapping("/usuario/{username}")

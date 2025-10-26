@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://www.cibercare.com/especialidad"
+           xmlns:tns="http://www.cibercare.com/especialidad"
+           elementFormDefault="qualified">
+
+    <xs:complexType name="Especialidad">
+        <xs:sequence>
+            <xs:element name="id" type="xs:long" minOccurs="0"/>
+            <xs:element name="nombre" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:element name="createEspecialidadRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="nombre" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="createEspecialidadResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="especialidad" type="tns:Especialidad"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="getAllEspecialidadesRequest">
+     <xs:complexType>
+        <xs:sequence/>
+    </xs:complexType>
+</xs:element>
+
+    <xs:element name="getAllEspecialidadesResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="especialidades" type="tns:Especialidad" maxOccurs="unbounded"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="getEspecialidadByIdRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="id" type="xs:long"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="getEspecialidadByIdResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="especialidad" type="tns:Especialidad" minOccurs="0"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="updateEspecialidadRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="id" type="xs:long"/>
+                <xs:element name="nombre" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="updateEspecialidadResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="especialidad" type="tns:Especialidad"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="deleteEspecialidadRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="id" type="xs:long"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="deleteEspecialidadResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="mensaje" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+</xs:schema>

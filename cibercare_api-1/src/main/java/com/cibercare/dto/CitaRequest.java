@@ -7,4 +7,5 @@ public class CitaRequest {
     private Long pacienteId;
     private Long doctorId;
     private Long horarioId;
+    private String motivo;
 }

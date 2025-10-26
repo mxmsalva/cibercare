@@ -1,9 +1,0 @@
-package com.cibercare.repository;
-
-import org.springframework.data.jpa.repository.JpaRepository;
-
-import com.cibercare.model.Doctor;
-
-public interface IDoctorRepository extends JpaRepository<Doctor, Long>{
-
-}

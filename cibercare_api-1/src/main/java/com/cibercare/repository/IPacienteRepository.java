@@ -7,6 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.cibercare.model.Paciente;
 
 public interface IPacienteRepository extends JpaRepository<Paciente, Long>{
-    Optional<Paciente> findByUsuario_Username(String username);
+    Optional<Paciente> findByUsuarioUsername(String username);
 
 }

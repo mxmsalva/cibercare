@@ -26,4 +26,7 @@ public class Cita {
     @ManyToOne
     @JoinColumn(name = "estado_id")
     private EstadoCita estado;
+    
+    @Column(length = 255)
+    private String motivo;
 }

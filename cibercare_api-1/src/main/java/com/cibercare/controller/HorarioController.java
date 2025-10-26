@@ -1,14 +1,19 @@
 package com.cibercare.controller;
 
-import com.cibercare.model.Cita;
+import com.cibercare.model.Doctor;
 import com.cibercare.model.Horario;
+import com.cibercare.repository.IDoctorRepository;
 import com.cibercare.repository.IHorarioRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/horarios")
@@ -17,29 +22,65 @@ public class HorarioController {
     @Autowired
     private IHorarioRepository horarioRepository;
 
-    
+    @Autowired
+    private IDoctorRepository doctorRepository;
+
+    // =============================
+    // 🔹 ADMIN: Ver todos los horarios
+    // =============================
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public List<Horario> listarHorarios() {
         return horarioRepository.findAll();
     }
 
+    // =============================
+    // 🔹 DOCTOR: Ver solo sus horarios
+    // =============================
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/mis-horarios")
+    public ResponseEntity<?> listarHorariosDelDoctor(Authentication auth) {
+        String username = auth.getName();
+
+        Doctor doctor = doctorRepository.findByUsuarioUsername(username)
+                .orElseThrow(() -> new RuntimeException("Doctor no encontrado para el usuario autenticado"));
+
+        List<Horario> horarios = horarioRepository.findByDoctorId(doctor.getId());
+        return ResponseEntity.ok(horarios);
+    }
+
+    // =============================
+    // 🔹 ADMIN o DOCTOR: Ver horarios de un doctor específico (por ID)
+    // =============================
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     @GetMapping("/doctor/{doctorId}")
     public List<Horario> listarHorariosPorDoctor(@PathVariable Long doctorId) {
         return horarioRepository.findByDoctorId(doctorId);
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
-    @PostMapping
-    public ResponseEntity<?> crearHorario(@RequestBody Horario horario) {
-        if (horario.getDoctor() == null || horario.getDoctor().getId() == null) {
-            return ResponseEntity.badRequest().body("Debe especificar el ID del doctor");
-        }
+    // =============================
+    // 🔹 DOCTOR: Crear horario propio
+    // =============================
+    @PreAuthorize("hasRole('DOCTOR')")
+    @PostMapping("/crear")
+    public ResponseEntity<?> crearHorario(@RequestBody Horario horario, Authentication auth) {
+        String username = auth.getName();
+
+        Doctor doctor = doctorRepository.findByUsuarioUsername(username)
+                .orElseThrow(() -> new RuntimeException("Doctor no encontrado para el usuario autenticado"));
+
+        horario.setDoctor(doctor);
         Horario nuevoHorario = horarioRepository.save(horario);
-        return ResponseEntity.ok(nuevoHorario);
+
+        return ResponseEntity.ok(Map.of(
+                "mensaje", "Horario creado correctamente",
+                "horario", nuevoHorario
+        ));
     }
 
+    // =============================
+    // 🔹 ADMIN o DOCTOR: Cambiar disponibilidad
+    // =============================
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     @PutMapping("/{id}/disponibilidad")
     public ResponseEntity<?> cambiarDisponibilidad(@PathVariable Long id, @RequestParam boolean disponible) {
@@ -47,7 +88,8 @@ public class HorarioController {
                 .orElse(null);
 
         if (horario == null) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Horario no encontrado"));
         }
 
         horario.setDisponible(disponible);
@@ -55,14 +97,31 @@ public class HorarioController {
         return ResponseEntity.ok(horario);
     }
 
-
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
+    // =============================
+    // 🔹 DOCTOR: Eliminar solo su horario
+    // =============================
+    @PreAuthorize("hasRole('DOCTOR')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> eliminarHorario(@PathVariable Long id) {
-        if (!horarioRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
+    public ResponseEntity<?> eliminarHorario(@PathVariable Long id, Authentication auth) {
+        String username = auth.getName();
+
+        Doctor doctor = doctorRepository.findByUsuarioUsername(username)
+                .orElseThrow(() -> new RuntimeException("Doctor no encontrado para el usuario autenticado"));
+
+        Horario horario = horarioRepository.findById(id)
+                .orElse(null);
+
+        if (horario == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Horario no encontrado"));
         }
-        horarioRepository.deleteById(id);
-        return ResponseEntity.ok("Horario eliminado correctamente");
+
+        if (!horario.getDoctor().getId().equals(doctor.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "No puedes eliminar horarios de otro doctor"));
+        }
+
+        horarioRepository.delete(horario);
+        return ResponseEntity.ok(Map.of("mensaje", "Horario eliminado correctamente"));
     }
 }

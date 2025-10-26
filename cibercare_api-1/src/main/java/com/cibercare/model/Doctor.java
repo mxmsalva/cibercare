@@ -29,8 +29,9 @@ public class Doctor {
     private Usuario usuario;
 
     @ManyToOne
-    @JoinColumn(name = "especialidad_id")
+    @JoinColumn(name = "especialidad_id", nullable = false)
     private Especialidad especialidad;
+
 
     @Column(columnDefinition = "TEXT")
     private String descripcion;

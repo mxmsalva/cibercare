@@ -2,10 +2,12 @@ package com.cibercare.controller;
 
 import com.cibercare.model.Doctor;
 import com.cibercare.model.Especialidad;
+import com.cibercare.model.Horario;
 import com.cibercare.model.Usuario;
 import com.cibercare.repository.ICitaRepository;
 import com.cibercare.repository.IDoctorRepository;
 import com.cibercare.repository.IEspecialidadRepository;
+import com.cibercare.repository.IHorarioRepository;
 import com.cibercare.repository.IUsuarioRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,9 @@ public class DoctorController {
 
 	@Autowired
 	private IEspecialidadRepository especialidadRepository;
+	
+	@Autowired
+	private IHorarioRepository horarioRepository;
 
 	@PreAuthorize("hasAnyRole('ADMIN', 'PACIENTE', 'DOCTOR')")
 	@GetMapping
@@ -112,6 +117,11 @@ public class DoctorController {
 		}
 	}
 	
-	
+	@GetMapping("/{doctorId}/horarios")
+	public ResponseEntity<?> listarHorariosPorDoctor(@PathVariable Long doctorId) {
+	    List<Horario> horarios = horarioRepository.findByDoctorId(doctorId);
+	    return ResponseEntity.ok(horarios);
+	}
+
 
 }

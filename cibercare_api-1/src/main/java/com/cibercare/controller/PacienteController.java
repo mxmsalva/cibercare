@@ -17,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import org.springframework.security.core.Authentication;
+
 
 @RestController
 @RequestMapping("/api/pacientes")
@@ -95,28 +97,32 @@ public class PacienteController {
 	@PreAuthorize("hasAnyRole('PACIENTE', 'ADMIN')")
 	@GetMapping("/username/{username}")
 	public ResponseEntity<?> obtenerPorUsername(@PathVariable String username) {
-		Paciente paciente = pacienteRepository.findByUsuario_Username(username)
+		Paciente paciente = pacienteRepository.findByUsuarioUsername(username)
 				.orElseThrow(() -> new RuntimeException("Paciente no encontrado"));
 		return ResponseEntity.ok(paciente);
 	}
 
-	@PreAuthorize("hasRole('PACIENTE')")
 	@PostMapping("/registrar")
-	public ResponseEntity<?> registrarCita(@RequestBody CitaRequest request) {
-		Cita cita = new Cita();
-		cita.setPaciente(pacienteRepository.findById(request.getPacienteId())
-				.orElseThrow(() -> new RuntimeException("Paciente no encontrado")));
-		cita.setDoctor(doctorRepository.findById(request.getDoctorId())
-				.orElseThrow(() -> new RuntimeException("Doctor no encontrado")));
-		cita.setHorario(horarioRepository.findById(request.getHorarioId())
-				.orElseThrow(() -> new RuntimeException("Horario no encontrado")));
+	public ResponseEntity<?> registrarCita(@RequestBody CitaRequest request, Authentication authentication) {
+	    String username = authentication.getName();
+	    Paciente paciente = pacienteRepository.findByUsuarioUsername(username)
+	        .orElseThrow(() -> new RuntimeException("Paciente no encontrado"));
 
-		EstadoCita estado = estadoCitaRepository.findByNombre("PENDIENTE")
-				.orElseThrow(() -> new RuntimeException("Estado no encontrado"));
-		cita.setEstado(estado);
+	    Cita cita = new Cita();
+	    cita.setPaciente(paciente);
+	    cita.setDoctor(doctorRepository.findById(request.getDoctorId())
+	        .orElseThrow(() -> new RuntimeException("Doctor no encontrado")));
+	    cita.setHorario(horarioRepository.findById(request.getHorarioId())
+	        .orElseThrow(() -> new RuntimeException("Horario no encontrado")));
+	    cita.setEstado(estadoCitaRepository.findByNombre("PENDIENTE")
+	        .orElseThrow(() -> new RuntimeException("Estado no encontrado")));
 
-		Cita nueva = citaRepository.save(cita);
-		return ResponseEntity.ok(nueva);
+	    // 🟢 nuevo
+	    cita.setMotivo(request.getMotivo() != null ? request.getMotivo() : "Consulta general");
+
+	    return ResponseEntity.ok(citaRepository.save(cita));
 	}
+
+
 
 }

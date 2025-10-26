@@ -1,6 +1,7 @@
 package com.cibercare.controller;
 
 import com.cibercare.dto.CitaRequest;
+import com.cibercare.dto.PacienteDTO;
 import com.cibercare.model.Cita;
 import com.cibercare.model.EstadoCita;
 import com.cibercare.model.Paciente;
@@ -19,6 +20,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.security.core.Authentication;
 
@@ -76,15 +78,24 @@ public class PacienteController {
 		}
 	}
 
-	@PreAuthorize("hasAnyRole('ADMIN', 'PACIENTE')")
 	@PutMapping("/{id}")
-	public ResponseEntity<?> actualizarPaciente(@PathVariable Long id, @RequestBody Paciente pacienteActualizado) {
-		return pacienteRepository.findById(id).map(pacienteExistente -> {
-			pacienteExistente.setTelefono(pacienteActualizado.getTelefono());
-			pacienteExistente.setDireccion(pacienteActualizado.getDireccion());
-			pacienteExistente.setFechaNacimiento(pacienteActualizado.getFechaNacimiento());
-			return ResponseEntity.ok(pacienteRepository.save(pacienteExistente));
-		}).orElse(ResponseEntity.notFound().build());
+	public ResponseEntity<?> actualizarPaciente(@PathVariable Long id, @RequestBody PacienteDTO dto) {
+	    Optional<Paciente> opt = pacienteRepository.findById(id);
+	    if (opt.isEmpty()) {
+	        return ResponseEntity.notFound().build();
+	    }
+
+	    Paciente paciente = opt.get();
+	    Usuario usuario = usuarioRepository.findById(dto.getUsuarioId())
+	            .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+	    paciente.setUsuario(usuario);
+	    paciente.setTelefono(dto.getTelefono());
+	    paciente.setDireccion(dto.getDireccion());
+	    paciente.setFechaNacimiento(dto.getFechaNacimiento());
+
+	    pacienteRepository.save(paciente);
+	    return ResponseEntity.ok(Map.of("mensaje", "Paciente actualizado correctamente"));
 	}
 
 

@@ -69,35 +69,27 @@ public class AuthController {
 	        usuario.setEmail((String) request.get("email"));
 	        usuario.setUsername((String) request.get("username"));
 	        usuario.setPassword(passwordEncoder.encode((String) request.get("password")));
-
-	        // 🔹 Obtener el rol por ID
 	        Object rolObj = request.get("rol");
 	        Rol rol = null;
 	        if (rolObj instanceof Map<?, ?> rolMap && rolMap.containsKey("id")) {
 	            Long rolId = ((Number) rolMap.get("id")).longValue();
 	            rol = rolRepository.findById(rolId).orElse(null);
 	        }
-
 	        if (rol == null) {
 	            return ResponseEntity.badRequest().body(Map.of("error", "Rol no encontrado"));
 	        }
-
 	        usuario.setRol(rol);
 	        usuarioRepository.save(usuario);
-
-	        // ✅ Crear automáticamente la relación según el rol
 	        if ("DOCTOR".equalsIgnoreCase(rol.getNombre())) {
 	            Doctor doctor = new Doctor();
-	            doctor.setUsuario(usuario); // ← aquí el vínculo correcto
+	            doctor.setUsuario(usuario); 
 	            doctorRepository.save(doctor);
 	        }
-
 	        if ("PACIENTE".equalsIgnoreCase(rol.getNombre())) {
 	            Paciente paciente = new Paciente();
 	            paciente.setUsuario(usuario);
 	            pacienteRepository.save(paciente);
 	        }
-
 	        return ResponseEntity.ok(Map.of(
 	                "mensaje", "Usuario registrado correctamente",
 	                "usuario", usuario
@@ -110,25 +102,21 @@ public class AuthController {
 	    }
 	}
 
-
 	@PostMapping("/register/pacientes")
 	public ResponseEntity<?> registrarPaciente(@RequestBody Map<String, Object> request) {
 	    try {
-	        // 🧠 1️⃣ Crear el usuario
 	        Usuario usuario = new Usuario();
 	        usuario.setNombreCompleto((String) request.get("nombreCompleto"));
 	        usuario.setEmail((String) request.get("email"));
 	        usuario.setUsername((String) request.get("username"));
 	        usuario.setPassword(passwordEncoder.encode((String) request.get("password")));
 
-	        // 🧩 Rol paciente
 	        Rol rolPaciente = rolRepository.findByNombre("PACIENTE")
 	                .orElseThrow(() -> new RuntimeException("Rol 'PACIENTE' no encontrado"));
 	        usuario.setRol(rolPaciente);
 
 	        Usuario nuevoUsuario = usuarioRepository.save(usuario);
 
-	        // 🩺 2️⃣ Crear registro de paciente
 	        Paciente paciente = new Paciente();
 	        paciente.setUsuario(nuevoUsuario);
 	        paciente.setDireccion((String) request.get("direccion"));
@@ -138,9 +126,7 @@ public class AuthController {
 	        if (fechaNacObj != null) {
 	            paciente.setFechaNacimiento(LocalDate.parse(fechaNacObj.toString()));
 	        }
-
 	        pacienteRepository.save(paciente);
-
 	        return ResponseEntity.ok(Map.of(
 	                "mensaje", "Paciente registrado correctamente",
 	                "usuarioId", nuevoUsuario.getId(),

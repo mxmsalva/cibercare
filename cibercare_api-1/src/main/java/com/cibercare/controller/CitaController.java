@@ -54,12 +54,6 @@ public class CitaController {
 		return citaRepository.findAll();
 	}
 
-//    @PreAuthorize("hasAnyRole('ADMIN', 'PACIENTE')")
-//    @PostMapping
-//    public Cita crearCita(@RequestBody Cita cita) {
-//        return citaRepository.save(cita);
-//    }
-
 	@PreAuthorize("hasRole('PACIENTE')")
 	@PutMapping("/{id}/cancelar")
 	public ResponseEntity<?> cancelarCita(@PathVariable Long id) {
@@ -70,11 +64,8 @@ public class CitaController {
 
 		cita.setEstado(cancelado);
 		citaRepository.save(cita);
-
-		// 🔔 Enviar notificación al doctor
 		notificacionService.enviarNotificacion(cita.getDoctor(),
 				"El paciente " + cita.getPaciente().getUsuario() + " ha cancelado su cita del " + cita.getHorario());
-
 		return ResponseEntity.ok("Cita cancelada y notificación enviada");
 	}
 
@@ -82,16 +73,12 @@ public class CitaController {
 	@PutMapping("/Doctor/{id}/revisar")
 	public ResponseEntity<?> marcarCitaComoRevisada(@PathVariable Long id) {
 		Cita cita = citaRepository.findById(id).orElseThrow(() -> new RuntimeException("Cita no encontrada"));
-
 		EstadoCita revisado = estadoCitaRepository.findByNombre("ATENDIDO")
 				.orElseThrow(() -> new RuntimeException("Estado 'ATENDIDO' no encontrado"));
 
 		cita.setEstado(revisado);
 		citaRepository.save(cita);
-
-		// 🚀 Notificar a todos los clientes suscritos
 		messagingTemplate.convertAndSend("/topic/citas", cita);
-
 		return ResponseEntity.ok(cita);
 	}
 
@@ -122,62 +109,45 @@ public class CitaController {
 	public ResponseEntity<?> registrarCita(@RequestBody Map<String, Object> datos, Authentication auth) {
 		try {
 			System.out.println("🩺 Datos recibidos: " + datos);
-
-			// ✅ Extraer IDs, sin asumir tipo numérico
 			Object horarioObj = ((Map<?, ?>) datos.get("horario")).get("id");
 			Object doctorObj = ((Map<?, ?>) datos.get("doctor")).get("id");
 
 			Long horarioId = Long.parseLong(horarioObj.toString());
 			Long doctorId = Long.parseLong(doctorObj.toString());
 			String motivo = (String) datos.get("motivo");
-
-			// ✅ Buscar entidades
 			String username = auth.getName();
 			Paciente paciente = pacienteRepository.findByUsuarioUsername(username)
 					.orElseThrow(() -> new RuntimeException("Paciente no encontrado"));
-
 			Horario horario = horarioRepository.findById(horarioId)
 					.orElseThrow(() -> new RuntimeException("Horario no encontrado"));
-
 			Doctor doctor = doctorRepository.findById(doctorId)
 					.orElseThrow(() -> new RuntimeException("Doctor no encontrado"));
-
 			EstadoCita estado = estadoCitaRepository.findById(1L)
 					.orElseThrow(() -> new RuntimeException("Estado no encontrado"));
-
-			// ✅ Crear cita
 			Cita cita = new Cita();
 			cita.setPaciente(paciente);
 			cita.setHorario(horario);
 			cita.setDoctor(doctor);
 			cita.setEstado(estado);
 			cita.setMotivo(motivo);
-
-			// ✅ Guardar y devolver
 			Cita guardada = citaRepository.save(cita);
 			return ResponseEntity.ok(guardada);
-
 		} catch (Exception e) {
 			e.printStackTrace();
 			return ResponseEntity.internalServerError().body("Error al registrar cita: " + e.getMessage());
 		}
 	}
-	
+	//socket
 	@PutMapping("/{id}/estado")
 	public ResponseEntity<?> actualizarEstado(@PathVariable Long id, @RequestBody Map<String, String> datos) {
 	    Cita cita = citaRepository.findById(id)
 	            .orElseThrow(() -> new RuntimeException("Cita no encontrada"));
-
 	    String nuevoEstado = datos.get("estado");
 	    EstadoCita estado = estadoCitaRepository.findByNombre(nuevoEstado)
 	            .orElseThrow(() -> new RuntimeException("Estado no válido"));
-
 	    cita.setEstado(estado);
 	    Cita actualizada = citaRepository.save(cita);
-
-	    // 🚀 Notificar a todos los clientes conectados
 	    messagingTemplate.convertAndSend("/topic/citas", actualizada);
-
 	    return ResponseEntity.ok(actualizada);
 	}
 	
@@ -185,10 +155,8 @@ public class CitaController {
 	@PostMapping("/crear")
 	public ResponseEntity<?> crearHorarioComoDoctor(@RequestBody Horario horario, Authentication auth) {
 	    String username = auth.getName();
-
 	    Doctor doctor = doctorRepository.findByUsuarioUsername(username)
 	            .orElseThrow(() -> new RuntimeException("Doctor no encontrado para el usuario autenticado"));
-
 	    horario.setDoctor(doctor);
 	    Horario nuevo = horarioRepository.save(horario);
 	    return ResponseEntity.ok(Map.of("mensaje", "Horario creado correctamente", "horario", nuevo));
@@ -200,7 +168,6 @@ public class CitaController {
 	    String username = auth.getName();
 	    Doctor doctor = doctorRepository.findByUsuarioUsername(username)
 	            .orElseThrow(() -> new RuntimeException("Doctor no encontrado"));
-	    
 	    List<Horario> horarios = horarioRepository.findByDoctorId(doctor.getId());
 	    return ResponseEntity.ok(horarios);
 	}

@@ -1,14 +1,12 @@
-// PacienteDTO.java
 package com.cibercare.dto;
 
-import lombok.Data;
 import java.time.LocalDate;
+import lombok.Data;
 
 @Data
 public class PacienteDTO {
-    private Long id;
-    private String nombreCompleto;
-    private LocalDate fechaNacimiento;
-    private String direccion;
+    private Long usuarioId;
     private String telefono;
+    private String direccion;
+    private LocalDate fechaNacimiento;
 }
